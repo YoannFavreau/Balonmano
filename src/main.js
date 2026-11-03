@@ -7,7 +7,7 @@ function render() {
   const app = document.getElementById('app');
   const runner = document.getElementById('runner'), rs = runner ? runner.scrollTop : 0, wz = document.getElementById('wizard'), ws = wz ? wz.scrollTop : 0;
   const demo = DEMO ? `<div class="sticky top-0 z-20 bg-warn text-ink-0 text-sm font-semibold px-4 py-2 flex items-center justify-between gap-2"><span>MODE DÉMO — données fictives, rien n’est enregistré</span><button data-a="demo-off" class="underline">Quitter</button></div>` : '';
-  app.innerHTML = navHtml() + `<div class="lg:pl-64 pb-28 lg:pb-10">${demo}${views[ui.tab]()}</div>` + overlays() + (DB().active && ui.runOpen && !ui.wiz ? vRunner() : '') + (ui.wiz ? (ui.wiz.type === 'ci' ? wizCheckin() : DB().active ? wizBilan() : '') : '');
+  app.innerHTML = navHtml() + `<div class="lg:pl-64 pb-28 lg:pb-10">${demo}${views[ui.tab]()}</div>` + overlays() + (DB().active && ui.runOpen && !ui.wiz ? vRunner() : '') + (ui.wiz ? (ui.wiz.type === 'ci' ? wizCheckin() : ui.wiz.type === 'free' ? wizFree() : DB().active ? wizBilan() : '') : '');
   const r2 = document.getElementById('runner'); if (r2) r2.scrollTop = rs; const w2 = document.getElementById('wizard'); if (w2 && !ui._wizTop) w2.scrollTop = ws; ui._wizTop = false;
   document.body.style.overflow = (ui.sheet || ui.wiz || (DB().active && ui.runOpen)) ? 'hidden' : '';
   requestAnimationFrame(drawCharts);
@@ -39,7 +39,7 @@ function doExport(kind) {
   const d = DB(), stamp = today();
   if (kind === 'json') return saveFile(`carnet-handball-${stamp}.json`, JSON.stringify({ app:'carnet-handball', v:2, exportedAt:new Date().toISOString(), demo: !!DEMO, state:d.state, logs:d.logs, checkins:d.checkins }, null, 2));
   if (kind === 'csv-s') return saveFile(`seances-${stamp}.csv`, csv([['date','semaine','phase','seance','statut','duree_min','rpe','charge_UA','tonnage_kg','sensations','douleur_mollet_G','douleur_mollet_D','douleur_epaule','commentaire'],
-    ...d.logs.sort((a,b) => a.date.localeCompare(b.date)).map(l => [l.date, l.w, l.phase, SESSIONS[l.key].name, l.status, l.durMin, l.rpe, logLoad(l), l.tonnage, l.sens, l.pains && l.pains.calfL, l.pains && l.pains.calfR, l.pains && l.pains.shoulder, l.comment])]));
+    ...d.logs.sort((a,b) => a.date.localeCompare(b.date)).map(l => [l.date, l.w, l.phase, logTitle(l), l.status, l.durMin, l.rpe, logLoad(l), l.tonnage, l.sens, l.pains && l.pains.calfL, l.pains && l.pains.calfR, l.pains && l.pains.shoulder, l.comment])]));
   if (kind === 'csv-x') { const rows = [['date','seance','exercice','serie','repetitions','charge','validee','rpe_exercice','technique','douleur','km','minutes']];
     d.logs.forEach(l => Object.entries(l.ex).forEach(([id, x]) => (x.sets||[]).forEach((s, i) => rows.push([l.date, l.key, EX[id] ? EX[id].n : id, i+1, s.reps, s.load, s.done ? 1 : 0, x.rpe, x.tech, x.pain ? `${x.pain.zone}:${x.pain.level}` : '', i === 0 ? x.km : '', i === 0 ? x.min : '']))));
     return saveFile(`series-${stamp}.csv`, csv(rows)); }
@@ -106,6 +106,10 @@ document.addEventListener('click', e => {
     case 'bil-detail': run.quick = false; run.items.forEach(it => it.sets.forEach(x => x.done = false)); ui.wiz = null; ui.runOpen = true; persist('active'); render(); break;
     case 'coll-skip': { const ev = st.events.find(x => x.id === v); ev.asked = true; ev.done = false; persist(); rer(); break; }
     case 'data-tab': ui.dataTab = v; rer(); break;
+    case 'free-new': ui.free = freeDraft(b.dataset.d); ui.wiz = { type:'free', step:0 }; ui.sheet = null; ui._wizTop = true; animate(); render(); break;
+    case 'free-ex-add': { const id = document.getElementById('free-ex-add').value, e = EX[id]; ui.free.ex.push({ id, sets: 3, reps: e.kind === 'time' ? curLoad(id) : e.repsProg ? curReps(id) : 10, load: e.kind === 'strength' && !e.repsProg ? curLoad(id) : null }); render(); break; }
+    case 'free-ex-del': ui.free.ex.splice(+v, 1); render(); break;
+    case 'free-save': { const l = saveFree(); toast(`✓ ${logTitle(l)} ajoutée au ${fmtD(l.date)} · comptée dans ta charge de la semaine`); rer(); break; }
     case 'sync-later': ui.syncDismissed = true; rer(); break;
     case 'gh-save': { const val = id => (document.getElementById(id).value || '').trim();
       const c = { owner: val('gh-owner').replace(/^@/, ''), repo: val('gh-repo') || 'carnet-handball-data', path:'carnet.json', branch:'main', token: val('gh-token'), first: !GH.on() };
@@ -145,6 +149,8 @@ document.addEventListener('click', e => {
       if (kind === 'rpe') run.items[+x].rpe = val;
       else if (kind === 'fb') { const it = run.items[+x], t = it.pres.rpe || 7; it.fb = val; ({ easy:() => { it.rpe = Math.max(1, t-1); it.tech = 1; }, ok:() => { it.rpe = t; it.tech = 1; }, hard:() => { it.rpe = Math.min(10, t+1); it.tech = 2; }, bad:() => { it.rpe = Math.min(10, t+2); it.tech = 3; } })[val](); }
       else if (kind === 'wci') setPath(ui.ci, x, val);
+      else if (kind === 'free') ui.free[x] = val;
+      else if (kind === 'freep') ui.free.pains[x] = val;
       else if (kind === 'wbil') run.bilan.pains[x] = val;
       else if (kind === 'bilq') { run.bilan.quality = val; run.items.forEach(it => { if (EX[it.id].kind === 'check') return; if (val === 1) { it.rpe = it.pres.rpe; it.tech = 1; } else if (val === 2) { it.rpe = Math.min(10, (it.pres.rpe||7) + 1); it.tech = 2; } else { it.rpe = null; it.tech = null; } }); }
       else if (kind === 'tech') run.items[+x].tech = val;
@@ -235,12 +241,15 @@ document.addEventListener('input', e => {
   if (el.dataset.set && el.dataset.i != null) { const it = run.items[+el.dataset.i]; it.sets[+el.dataset.k][el.dataset.set] = el.value === '' ? '' : +el.value; clearTimeout(window._ra); window._ra = setTimeout(() => persist('active'), 600); return; }
   if (el.dataset.run) { const it = run.items[+el.dataset.i]; it[el.dataset.run] = el.value; clearTimeout(window._ra); window._ra = setTimeout(() => persist('active'), 600); return; }
   if (el.dataset.bil) { run.bilan[el.dataset.bil] = el.dataset.bil === 'durMin' ? +el.value : el.value; return; }
+  if (el.dataset.free) { const k = el.dataset.free; ui.free[k] = ['durMin','km'].includes(k) ? (el.value === '' ? null : +el.value) : el.value; return; }
+  if (el.dataset.freex) { ui.free.ex[+el.dataset.i][el.dataset.freex] = el.value === '' ? null : +el.value; return; }
   if (el.dataset.ci) { setPath(ui.ci, el.dataset.ci, el.value === '' ? null : +el.value); return; }
 });
 document.addEventListener('change', e => {
   const el = e.target, st = ST(), run = act();
   if (el.dataset.bind && el.dataset.bind.startsWith('runpain.')) { persist('active'); rer(); return; }
   if (el.dataset.bind && el.dataset.bind.startsWith('bil.')) { persist('active'); return; }
+  if (el.dataset.free || el.dataset.freex) { rer(); return; }
   if (el.dataset.a === 'ci-date') { ui.ciDate = el.value || today(); ui.ci = null; rer(); return; }
   if (el.dataset.a === 'cmp') { ui.cmp[el.dataset.v] = el.value; rer(); return; }
   if (el.dataset.note) { st.exo[el.dataset.note] = { ...(st.exo[el.dataset.note]||{}), notes: el.value }; persist(); toast('Note enregistrée'); return; }

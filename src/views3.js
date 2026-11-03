@@ -10,7 +10,7 @@ function vCare() {
   const c = ui.ci, saved = !!checkinFor(date), prev = checkinFor(addDays(date, -1));
   const vz = z => zoneVigilance(z, saved ? { ...checkinFor(date), _date: date } : null, prev);
   const lastLog = [...DB().logs].sort((a,b) => b.date.localeCompare(a.date))[0];
-  const recent = DB().logs.filter(l => [1,2].includes(diffDays(date, l.date))).map(l => `${SESSIONS[l.key].name} (${diffDays(date, l.date) === 1 ? '24 h' : '48 h'})`);
+  const recent = DB().logs.filter(l => [1,2].includes(diffDays(date, l.date))).map(l => `${logTitle(l)} (${diffDays(date, l.date) === 1 ? '24 h' : '48 h'})`);
   const tv = ST().settings.thresholdsValidated;
   const calf = (z, name, note) => card(`${h2(`${name} <span class="text-txt-3 text-sm font-sans font-normal">${note}</span>`, saved ? vigChip(vz(z).level) : '')}
     <div class="grid sm:grid-cols-2 gap-4">${slider(`${z}.pain`, c[z].pain, { label:'Douleur quotidienne', hint:'0 aucune|10 maximale' })}${slider(`${z}.stiff`, c[z].stiff, { label:'Raideur matinale', hint:'0 aucune|10 très raide' })}</div>
@@ -39,7 +39,7 @@ function vCare() {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">${[['rhr','FC au repos','bpm'],['hrv','VFC nuit (moy.)','ms'],['sleepScore','Score sommeil','/100'],['bb','Body Battery réveil','/100']].map(([k,l,u]) =>
             `<label class="text-xs"><span class="text-txt-3">${l} (${u})</span><input type="number" inputmode="numeric" data-ci="gen.${k}" value="${c.gen[k] ?? ''}" class="inp w-full mt-1"></label>`).join('')}</div>
           ${(() => { const bR = watchBaseline(date, 'rhr'), bH = watchBaseline(date, 'hrv'); return `<p class="text-[11px] text-txt-3 mt-2">${bR != null || bH != null ? `Tes moyennes 7 j : ${bR != null ? 'FC repos ' + Math.round(bR) + ' bpm' : ''}${bR != null && bH != null ? ' · ' : ''}${bH != null ? 'VFC ' + Math.round(bH) + ' ms' : ''}. Alerte orange si FC repos ≥ +${TH().rhrDelta.o} bpm ou VFC ≤ −${TH().hrvDrop.o} %.` : 'Les alertes s’activent après 4 jours de relevés (comparaison à ta propre moyenne 7 jours).'}</p>`; })()}</div>
-        <div class="rounded-xl bg-ink-2 p-3 text-sm"><div class="text-txt-3 text-xs">RPE de la dernière séance</div><b>${lastLog ? `${lastLog.rpe ?? '—'} / 10` : '—'}</b>${lastLog ? `<span class="text-txt-3"> · ${SESSIONS[lastLog.key].name}, ${fmtS(lastLog.date)}</span>` : ''}</div></div>`)}
+        <div class="rounded-xl bg-ink-2 p-3 text-sm"><div class="text-txt-3 text-xs">RPE de la dernière séance</div><b>${lastLog ? `${lastLog.rpe ?? '—'} / 10` : '—'}</b>${lastLog ? `<span class="text-txt-3"> · ${logTitle(lastLog)}, ${fmtS(lastLog.date)}</span>` : ''}</div></div>`)}
     <div class="sticky bottom-20 lg:bottom-4 z-20 flex justify-end">${btn(saved ? 'Mettre à jour le suivi' : 'Enregistrer le suivi', 'ci-save', '', 'good')}</div>
     ${card(`${h2('Système de vigilance')}
       <div class="grid sm:grid-cols-3 gap-2 text-sm">${['green','orange','red'].map(l => `<div class="rounded-xl bg-ink-2 p-3">${vigChip(l)}<p class="text-txt-2 mt-1.5">${VIG[l].t}</p></div>`).join('')}</div>
@@ -86,9 +86,9 @@ function vStats() {
   const inR = d => { const w = calWeek(d); return w >= rg[0] && w <= rg[1]; };
   const logs = DB().logs.filter(l => inR(l.date)).sort((a,b) => a.date.localeCompare(b.date) || a.end - b.end);
   const days = []; for (let d = weekStart(rg[0]); d <= addDays(weekStart(rg[1]), 6) && d <= today(); d = addDays(d, 1)) days.push(d);
-  const strengthIds = Object.keys(EX).filter(id => EX[id].kind === 'strength' && !EX[id].repsProg && EX[id].zone !== 'calf' && exHistory(id).length);
+  const strengthIds = Object.keys(EX).filter(id => EX[id].kind === 'strength' && !EX[id].repsProg && EX[id].zone !== 'calf' && exHistory(id, true).length);
   if (!strengthIds.includes(ui.chartEx) && strengthIds.length) ui.chartEx = strengthIds[0];
-  const topSeries = id => exHistory(id).filter(h => inR(h.log.date)).map(h => ({ d: h.log.date, v: Math.max(0, ...(h.e.sets||[]).filter(s => s.done).map(s => +s.load||0)) })).filter(p => p.v);
+  const topSeries = id => exHistory(id, true).filter(h => inR(h.log.date)).map(h => ({ d: h.log.date, v: Math.max(0, ...(h.e.sets||[]).filter(s => s.done).map(s => +s.load||0)) })).filter(p => p.v);
   const ex1 = ui.chartEx ? topSeries(ui.chartEx) : [];
   const calfA = topSeries('calf_straight'), calfB = topSeries('calf_bent'), calfDates = [...new Set([...calfA, ...calfB].map(p => p.d))].sort();
   const lvlLogs = logs.filter(l => ['B','D'].includes(l.key) || l.ex.proprio || l.ex.agilite);
@@ -115,7 +115,7 @@ function vStats() {
           { name:'Genou tendu', color:SERIES[0], values: calfDates.map(d => (calfA.find(p => p.d === d)||{}).v ?? null) }, { name:'Genou fléchi (soléaire)', color:SERIES[1], values: calfDates.map(d => (calfB.find(p => p.d === d)||{}).v ?? null) }] }) + calfTests() : E('Enregistre une séance A (force bas du corps).'))}
       ${C('3 · Volume de course hebdomadaire', weeks.some(x => x.km) ? chartBox('s3', { type:'bar', labels: wl, unit:'km', series:[{ name:'km', color:SERIES[0], values: weeks.map(x => x.km) }] }) + `<div class="mt-1">${trendOf(weeks.map(x => x.km))}</div>` : E('Saisis les km dans tes séances de fractionné.'))}
       ${C('4 · Répartition fractionné court / long', weeks.some(x => x.court || x.long) ? chartBox('s4', { type:'bar', labels: wl, unit:'min', series:[{ name:'Court', color:SERIES[0], values: weeks.map(x => x.court) }, { name:'Long', color:SERIES[1], values: weeks.map(x => x.long) }] }) : E('Minutes de course saisies dans les séances B et D.'))}
-      ${C('5 · Évolution du RPE', logs.length ? chartBox('s5', { type:'line', labels: logs.map(l => fmtS(l.date)), full: logs.map(l => `${fmtD(l.date)} · ${SESSIONS[l.key].name}`), min:0, max:10, int:true, series:[{ name:'RPE séance', color:SERIES[0], values: logs.map(l => l.rpe) }, { name:'Moyenne mobile (3)', color:SERIES[0], dash:true, values: movingAvg(logs.map(l => l.rpe)) }] }) + `<div class="mt-1">${trendOf(logs.map(l => l.rpe))}</div>` : E('Le RPE global de chaque séance apparaîtra ici.'))}
+      ${C('5 · Évolution du RPE', logs.length ? chartBox('s5', { type:'line', labels: logs.map(l => fmtS(l.date)), full: logs.map(l => `${fmtD(l.date)} · ${logTitle(l)}`), min:0, max:10, int:true, series:[{ name:'RPE séance', color:SERIES[0], values: logs.map(l => l.rpe) }, { name:'Moyenne mobile (3)', color:SERIES[0], dash:true, values: movingAvg(logs.map(l => l.rpe)) }] }) + `<div class="mt-1">${trendOf(logs.map(l => l.rpe))}</div>` : E('Le RPE global de chaque séance apparaîtra ici.'))}
       ${C('6 · Évolution de la fatigue', fat.some(v => v != null) ? chartBox('s6', { type:'line', labels: days.map(fmtS), min:0, max:10, int:true, series:[{ name:'Fatigue', color:SERIES[1], values: fat }, { name:'Moyenne 7 j', color:SERIES[1], dash:true, values: movingAvg(fat, 7) }] }) + `<div class="mt-1">${trendOf(fat)}</div>` : E('Renseigne la fatigue dans le suivi quotidien.'))}
       ${C('7 · Historique des douleurs', days.some(d => checkinFor(d)) ? chartBox('s7', { type:'line', labels: days.map(fmtS), min:0, max:10, int:true, zone: TH().calfPain.o - 1, unit:'/10', series:[
           { name:'Mollet G', color:SERIES[0], values: days.map(d => ((checkinFor(d)||{}).calfL||{}).pain ?? null) }, { name:'Mollet D', color:SERIES[1], values: days.map(d => ((checkinFor(d)||{}).calfR||{}).pain ?? null) }, { name:'Épaule', color:SERIES[2], values: days.map(d => ((checkinFor(d)||{}).shoulder||{}).pain ?? null) }] }) : E('Le suivi quotidien alimente ce graphique.'))}
@@ -142,7 +142,7 @@ function vCal() {
   const ref = ui.calRef || today();
   const nav = `<div class="flex items-center gap-1.5">${btn('‹', 'cal-nav', 'data-v="-1" aria-label="Précédent"', 'ghost')}${btn('Aujourd’hui', 'cal-nav', 'data-v="0"', 'ghost')}${btn('›', 'cal-nav', 'data-v="1" aria-label="Suivant"', 'ghost')}</div>`;
   const modeSw = `<div class="inline-flex p-1 rounded-xl bg-ink-1 border border-ink-3">${[['week','Semaine'],['month','Mois']].map(([k,l]) => `<button data-a="cal-mode" data-v="${k}" class="px-3.5 py-2 rounded-lg text-sm font-medium ${ui.calMode===k ? 'bg-blue text-white' : 'text-txt-2'}">${l}</button>`).join('')}</div>`;
-  const add = `<div class="flex flex-wrap gap-2">${btn('+ Entraînement collectif', 'ev-new', 'data-v="collectif"', 'ghost')}${btn('+ Bilan', 'ev-new', 'data-v="bilan"', 'ghost')}${btn('+ Repos', 'ev-new', 'data-v="repos"', 'ghost')}</div>`;
+  const add = `<div class="flex flex-wrap gap-2">${btn('+ Séance effectuée', 'free-new', `data-d="${ui.calRef && ui.calRef <= today() ? ui.calRef : today()}"`)}${btn('+ Entraînement collectif', 'ev-new', 'data-v="collectif"', 'ghost')}${btn('+ Bilan', 'ev-new', 'data-v="bilan"', 'ghost')}${btn('+ Repos', 'ev-new', 'data-v="repos"', 'ghost')}</div>`;
   const legend = `<div class="flex flex-wrap gap-2 text-[11px]">${Object.keys(STATUS).map(statusChip).join('')}<span class="chip bg-blue/15 text-blue">🤾 Collectif</span><span class="chip bg-ink-3 text-txt-2">🩺 Bilan</span><span class="chip bg-ink-3 text-txt-2">⚠ 2 séances « mollets » en 24 h</span></div>`;
   return `${pageHead('Calendrier', ui.calMode === 'week' ? `Semaine ${calWeek(ref)} · ${fmtS(mondayOf(ref))} → ${fmtS(addDays(mondayOf(ref), 6))}` : D8(ref).toLocaleDateString('fr-FR', { month:'long', year:'numeric' }), nav)}
   <main class="px-4 lg:px-8 space-y-3 max-w-7xl fade-in"><div class="flex flex-wrap items-center justify-between gap-3">${modeSw}${add}</div>
@@ -162,6 +162,7 @@ function itemChip(e, compact) {
   if (e.type === 'session') { const s = e.slot, st = STATUS[s.status];
     return `<button data-a="sheet-slot" data-v="${s.id}" ${!s.log ? `draggable="true" data-drag="${s.id}"` : ''} class="${!s.log ? 'cursor-grab active:cursor-grabbing ' : ''}w-full text-left rounded-xl p-2 ${compact ? 'text-[11px] py-1 px-1.5' : 'text-sm'} border ${s.status === 'today' ? 'border-blue bg-blue/10' : 'border-ink-3 bg-ink-2'} hover:border-txt-3">
       <div class="flex items-center gap-1.5"><span class="rounded px-1 ${st.c}">${st.i}</span><b>${s.key}</b><span class="truncate ${compact ? 'hidden sm:inline' : ''}">${compact ? s.meta.short : s.meta.name}</span>${e.warn ? '<span class="text-warn ml-auto" title="Deux séances exigeantes pour les mollets en 24 h">⚠</span>' : ''}</div></button>`; }
+  if (e.type === 'free') return `<button data-a="show-log" data-v="${e.id}" class="w-full text-left rounded-xl p-2 ${compact ? 'text-[11px] py-1 px-1.5' : 'text-sm'} border border-good/40 bg-good/10"><div class="flex items-center gap-1.5"><span>${logIcon(e.log)}</span><span class="truncate">${compact ? 'Libre' : esc(e.label)}</span><span class="text-good">✓</span>${e.warn ? '<span class="text-warn ml-auto">⚠</span>' : ''}</div></button>`;
   if (e.type === 'collectif' || e.type === 'bilan' || e.type === 'repos') {
     const ic = { collectif:'🤾', bilan:'🩺', repos:'💤' }[e.type];
     return `<button data-a="sheet-ev" data-v="${e.id}" class="w-full text-left rounded-xl p-2 ${compact ? 'text-[11px] py-1 px-1.5' : 'text-sm'} border ${e.type === 'collectif' ? 'border-blue/40 bg-blue/10' : 'border-ink-3 bg-ink-2'}">

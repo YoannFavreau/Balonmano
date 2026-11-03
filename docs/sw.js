@@ -1,6 +1,6 @@
 /* Service worker : app disponible hors ligne. Les données ne sont jamais ici
    (elles sont dans le navigateur + le dépôt GitHub privé) : une mise à jour ne les touche pas. */
-const VERSION = '20261103163343';
+const VERSION = '20261103172355';
 const CACHE = 'carnet-hb-' + VERSION;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });

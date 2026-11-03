@@ -66,7 +66,7 @@ function vDash() {
       ${card(`${h2('Dernières performances')}${lastLogs.length ? `<ul class="space-y-2.5">${lastLogs.map(l => {
           const best = Object.entries(l.ex || {}).filter(([id, x]) => EX[id] && EX[id].kind === 'strength' && !EX[id].repsProg && (x.sets||[]).some(s => s.done)).slice(0, 2)
             .map(([id, x]) => `${EX[id].n.split('(')[0].trim()} ${Math.max(...x.sets.filter(s=>s.done).map(s => +s.load))} kg`).join(' · ');
-          return `<li class="text-sm"><div class="flex justify-between gap-2"><span class="font-medium">${SESSIONS[l.key].icon} ${SESSIONS[l.key].name}</span>${statusChip(l.status)}</div>
+          return `<li class="text-sm"><div class="flex justify-between gap-2"><span class="font-medium">${logIcon(l)} ${logTitle(l)}</span>${statusChip(l.status)}</div>
             <div class="text-xs text-txt-3">${fmtD(l.date)} · ${l.durMin} min · RPE ${l.rpe ?? '—'} · charge ${logLoad(l)} UA${best ? ' · ' + best : ''}</div></li>`; }).join('')}</ul>`
         : `<p class="text-sm text-txt-2">Tes séances enregistrées apparaîtront ici.</p>`}`)}
     </div>

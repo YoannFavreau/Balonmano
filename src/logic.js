@@ -208,6 +208,7 @@ function eventsOn(day) {
     const s = slot(ww, k);
     if (s.date === day && s.status !== 'replaced') out.push({ type:'session', id:s.id, slot:s, calf:SESSIONS[k].calf, label:SESSIONS[k].name });
   }));
+  DB().logs.filter(l => l.key === 'X' && l.date === day).forEach(l => out.push({ type:'free', id:l.id, log:l, calf: !!(l.extra && FREE_TYPES[l.extra.type].calf), label: logTitle(l) }));
   ST().events.filter(e => e.date === day).forEach(e => out.push({ type:e.type, id:e.id, ev:e, calf: e.type === 'collectif' || e.type === 'bilan', label: e.type === 'collectif' ? 'Entraînement collectif' : e.type === 'bilan' ? 'Bilan fonctionnel' : 'Repos' }));
   return out;
 }
@@ -340,8 +341,8 @@ function after(zone, date) {
   if (zone === 'calf' && pre != null && h24 != null && h24 - pre >= TH().calfDelta.o) { res.level = worst([res.level, 'orange']); res.reasons.push(`Douleur +${h24 - pre} à 24 h`); }
   return res;
 }
-function exHistory(id) {
-  return DB().logs.filter(l => l.ex && l.ex[id] && l.ex[id].touched).sort((a,b) => a.date.localeCompare(b.date) || (a.end||0) - (b.end||0))
+function exHistory(id, withFree = false) {
+  return DB().logs.filter(l => l.ex && l.ex[id] && l.ex[id].touched && (withFree || l.key !== 'X')).sort((a,b) => a.date.localeCompare(b.date) || (a.end||0) - (b.end||0))
     .map(l => ({ log:l, e:l.ex[id] }));
 }
 function assessEntry(id, h) {
@@ -443,6 +444,7 @@ function weekStats(w) {
     if (ex.run) { km += +x.km || 0; if (ex.ladder === 'court') court += +x.min || 0; else long += +x.min || 0; }
     (x.sets || []).forEach(st => { if (st.done && st.load && ex.kind === 'strength' && !ex.repsProg) tonnage += st.load * st.reps; });
   }));
+  logs.filter(l => l.key === 'X' && l.extra).forEach(l => { if (l.extra.type === 'run') km += +l.extra.km || 0; });
   const persoLoad = logs.reduce((a, l) => a + logLoad(l), 0);
   const collLoad = coll.reduce((a, c) => a + (c.duration||0) * (c.rpe||0), 0);
   const rpes = logs.map(l => l.rpe).filter(Boolean);

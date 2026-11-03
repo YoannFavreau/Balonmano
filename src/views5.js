@@ -8,7 +8,7 @@ function pendingItems() {
   const out = [], st = ST(), t = today(), cw = calWeek();
   if (DB().active) out.push({ type:'run', prio:0, title:'Séance en cours à terminer', sub: SESSIONS[parseSlot(DB().active.slot).key].name, icon:'▶' });
   if (!checkinFor(t)) {
-    const rec = DB().logs.filter(l => [1,2].includes(diffDays(t, l.date))).map(l => `${SESSIONS[l.key].short} (${diffDays(t, l.date) === 1 ? '24 h' : '48 h'})`);
+    const rec = DB().logs.filter(l => [1,2].includes(diffDays(t, l.date))).map(l => `${(l.key === "X" ? logTitle(l) : SESSIONS[l.key].short)} (${diffDays(t, l.date) === 1 ? '24 h' : '48 h'})`);
     out.push({ type:'ci', prio:1, title:'Suivi du matin', sub: rec.length ? `Sert aussi de contrôle après : ${rec.join(', ')}` : 'Mollets, épaule, récupération, montre · 1 min', icon:'☀' });
   }
   [cw-1, cw].filter(w => w >= 1).forEach(w => weekSlots(w).forEach(s => {
@@ -54,9 +54,9 @@ function sessionHero(s, isToday) {
 }
 function weekStrip() {
   const mon = mondayOf(today());
-  return `<div class="grid grid-cols-7 gap-1.5">${Array.from({length:7}, (_, i) => { const d = addDays(mon, i), its = eventsOn(d).filter(e => e.type === 'session' || e.type === 'collectif'), isT = d === today();
+  return `<div class="grid grid-cols-7 gap-1.5">${Array.from({length:7}, (_, i) => { const d = addDays(mon, i), its = eventsOn(d).filter(e => ['session','collectif','free'].includes(e.type)), isT = d === today();
     return `<div class="rounded-xl p-1.5 text-center ${isT ? 'bg-blue/15 border border-blue/50' : 'bg-ink-1 border border-ink-3'}"><div class="text-[10px] uppercase ${isT ? 'text-blue font-bold' : 'text-txt-3'}">${DAYS_S[i]}</div>
-      <div class="mt-1 space-y-1 min-h-[1.75rem]">${its.map(e => e.type === 'session' ? `<button data-a="sheet-slot" data-v="${e.slot.id}" class="w-full rounded-md text-xs font-bold py-1 ${STATUS[e.slot.status].c}" title="${e.slot.meta.name} · ${STATUS[e.slot.status].l}">${e.slot.key}</button>` : `<button data-a="sheet-ev" data-v="${e.id}" class="w-full rounded-md text-xs py-1 bg-blue/15">🤾</button>`).join('') || '<div class="text-[10px] text-txt-3 pt-1">—</div>'}</div></div>`; }).join('')}</div>`;
+      <div class="mt-1 space-y-1 min-h-[1.75rem]">${its.map(e => e.type === 'session' ? `<button data-a="sheet-slot" data-v="${e.slot.id}" class="w-full rounded-md text-xs font-bold py-1 ${STATUS[e.slot.status].c}" title="${e.slot.meta.name} · ${STATUS[e.slot.status].l}">${e.slot.key}</button>` : e.type === 'free' ? `<button data-a="show-log" data-v="${e.id}" class="w-full rounded-md text-xs py-1 bg-good/20" title="${esc(e.label)}">${logIcon(e.log)}</button>` : `<button data-a="sheet-ev" data-v="${e.id}" class="w-full rounded-md text-xs py-1 bg-blue/15">🤾</button>`).join('') || '<div class="text-[10px] text-txt-3 pt-1">—</div>'}</div></div>`; }).join('')}</div>`;
 }
 function vToday() {
   const cw = calWeek(), wi = weekInfo(cw), ts = todaySlot(), pend = pendingItems(), st = ST();
@@ -76,6 +76,7 @@ function vToday() {
     ${pend.length ? `<button data-a="tab" data-v="inbox" class="w-full rounded-2xl bg-ink-1 border border-warn/40 p-4 flex items-center gap-3 text-left hover:border-warn"><span class="w-9 h-9 rounded-full bg-warn text-ink-0 grid place-items-center font-bold">${pend.length}</span>
       <span class="flex-1"><b>${pend.length === 1 ? 'Une question' : pend.length + ' questions'} en attente</b><span class="block text-sm text-txt-3">${pend.slice(0, 2).map(p => p.title).join(' · ')}</span></span><span class="text-warn text-xl">→</span></button>` : ''}
     ${main}
+    <button data-a="free-new" class="w-full rounded-2xl border border-dashed border-ink-3 p-4 text-left flex items-center gap-3 hover:border-txt-3"><span class="w-9 h-9 rounded-xl bg-ink-2 grid place-items-center text-lg">＋</span><span class="flex-1"><b class="text-sm">Ajouter une séance effectuée</b><span class="block text-xs text-txt-3">Course, salle, vélo, handball… hors programme</span></span></button>
     <section><div class="flex items-center justify-between mb-2"><h3 class="text-sm font-semibold text-txt-2">Ma semaine</h3><button data-a="tab" data-v="cal" class="text-xs text-blue">Calendrier →</button></div>${weekStrip()}</section>
   </main>`;
 }
@@ -90,7 +91,7 @@ function vInbox() {
     let actions = '';
     if (it.type === 'run') actions = btn('Reprendre', 'run-open');
     if (it.type === 'ci') actions = btn('Répondre', 'wiz-ci');
-    if (it.type === 'slot') actions = `${btn('Oui, comme prévu', 'quick-done', `data-v="${it.id}"`, 'good')}${btn('Oui, en partie', 'run-start', `data-v="${it.id}"`, 'ghost')}${btn('Non', 'slot-missed', `data-v="${it.id}"`, 'ghost')}${btn('Je la reporte', 'sheet-slot', `data-v="${it.id}"`, 'ghost')}`;
+    if (it.type === 'slot') actions = `${btn('Oui, comme prévu', 'quick-done', `data-v="${it.id}"`, 'good')}${btn('Oui, en partie', 'run-start', `data-v="${it.id}"`, 'ghost')}${btn('Non', 'slot-missed', `data-v="${it.id}"`, 'ghost')}${btn('J’ai fait autre chose', 'free-new', `data-d="${slot(parseSlot(it.id).w, parseSlot(it.id).key).date}"`, 'ghost')}${btn('Je la reporte', 'sheet-slot', `data-v="${it.id}"`, 'ghost')}`;
     if (it.type === 'coll') actions = `${btn('Renseigner', 'sheet-ev', `data-v="${it.id}"`)}${btn('Pas fait', 'coll-skip', `data-v="${it.id}"`, 'ghost')}`;
     if (it.type === 'bilan') actions = btn('Ouvrir le bilan', 'goto-bilan', '', 'ghost');
     return `<li class="card p-4"><div class="flex items-start gap-3"><span class="w-10 h-10 shrink-0 rounded-xl bg-ink-2 grid place-items-center text-xl">${it.icon}</span><div class="flex-1 min-w-0"><div class="font-semibold">${it.title}</div><div class="text-sm text-txt-3">${it.sub}</div></div></div>
@@ -189,7 +190,7 @@ function vData() {
   const tile = (v, l, sub) => `<div class="card p-4"><div class="font-display text-3xl font-bold">${v}</div><div class="text-sm">${l}</div><div class="text-xs text-txt-3 mt-0.5">${sub || ''}</div></div>`;
   const tab = ui.dataTab || 'force', E = t => emptyState('Pas encore de données', t);
   let chart = '';
-  if (tab === 'force') { const ids = ['squat','calf_straight','calf_bent'], pts = ids.map(id => exHistory(id).map(h => ({ d:h.log.date, v: Math.max(0, ...(h.e.sets||[]).filter(s => s.done).map(s => +s.load||0)) })).filter(p => p.v));
+  if (tab === 'force') { const ids = ['squat','calf_straight','calf_bent'], pts = ids.map(id => exHistory(id, true).map(h => ({ d:h.log.date, v: Math.max(0, ...(h.e.sets||[]).filter(s => s.done).map(s => +s.load||0)) })).filter(p => p.v));
     const dates = [...new Set(pts.flat().map(p => p.d))].sort();
     chart = dates.length ? chartBox('dt-f', { type:'line', connect:true, labels: dates.map(fmtS), unit:'kg', series: ids.map((id, i) => ({ name: EX[id].n.split('(')[0].trim(), color:SERIES[i], values: dates.map(d => (pts[i].find(p => p.d === d) || {}).v ?? null) })) }, 220) : E('Termine une séance A pour suivre tes charges.'); }
   if (tab === 'course') { const w = Array.from({length: Math.min(cw, 16)}, (_, i) => weekStats(i+1));
@@ -200,7 +201,7 @@ function vData() {
   if (tab === 'charge') { const w = Array.from({length: Math.min(cw, 16)}, (_, i) => weekStats(i+1));
     chart = w.some(x => x.load) ? chartBox('dt-l', { type:'bar', stacked:true, labels: w.map(x => 'S'+x.w), unit:'UA', series:[{ name:'Perso', color:SERIES[0], values: w.map(x => x.persoLoad) }, { name:'Collectif', color:SERIES[2], values: w.map(x => x.collLoad) }] }, 220) + '<p class="text-xs text-txt-3 mt-2">Charge = durée × RPE. Évite les hausses brutales d’une semaine à l’autre.</p>' : E('Renseigne le RPE à la fin de tes séances.'); }
   const last = [...DB().logs].sort((a,b) => (b.end||0) - (a.end||0)).slice(0, 5);
-  return `${pageHead('Mes données', 'L’essentiel en un coup d’œil.', btn('Analyse complète →', 'tab', 'data-v="stats"', 'ghost'))}
+  return `${pageHead('Mes données', 'L’essentiel en un coup d’œil.', btn('＋ Séance', 'free-new', '', 'ghost') + btn('Analyse complète →', 'tab', 'data-v="stats"', 'ghost'))}
   <main class="px-4 lg:px-8 space-y-4 max-w-3xl fade-in">
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       ${tile(`${done}<span class="text-txt-3 text-xl">/64</span>`, 'Séances terminées', `programme ${pr.pct} %`)}
@@ -209,6 +210,42 @@ function vData() {
       ${tile(painAvg ?? '—', 'Douleur mollets', 'moyenne 7 derniers jours (/10)')}
     </div>
     ${card(`<div class="scroll-x flex gap-1.5 mb-4">${[['force','Charges'],['course','Course'],['recup','Douleurs'],['charge','Charge hebdo']].map(([k,l]) => `<button data-a="data-tab" data-v="${k}" class="shrink-0 min-h-[40px] px-4 rounded-xl text-sm font-medium ${tab===k ? 'bg-blue text-white' : 'bg-ink-2 text-txt-2'}">${l}</button>`).join('')}</div>${chart}`)}
-    ${card(`${h2('Dernières séances')}${last.length ? `<ul class="divide-y divide-ink-3">${last.map(l => `<li><button data-a="show-log" data-v="${l.id}" class="w-full text-left py-3 flex items-center gap-3"><span class="text-xl">${SESSIONS[l.key].icon}</span><div class="flex-1 min-w-0"><div class="font-medium text-sm">${SESSIONS[l.key].name}</div><div class="text-xs text-txt-3">${fmtD(l.date)} · ${l.durMin} min · RPE ${l.rpe ?? '—'}</div></div>${statusChip(l.status)}</button></li>`).join('')}</ul>` : '<p class="text-sm text-txt-3">Aucune séance enregistrée.</p>'}`)}
+    ${card(`${h2('Dernières séances')}${last.length ? `<ul class="divide-y divide-ink-3">${last.map(l => `<li><button data-a="show-log" data-v="${l.id}" class="w-full text-left py-3 flex items-center gap-3"><span class="text-xl">${logIcon(l)}</span><div class="flex-1 min-w-0"><div class="font-medium text-sm">${logTitle(l)}</div><div class="text-xs text-txt-3">${fmtD(l.date)} · ${l.durMin} min · RPE ${l.rpe ?? '—'}</div></div>${statusChip(l.status)}</button></li>`).join('')}</ul>` : '<p class="text-sm text-txt-3">Aucune séance enregistrée.</p>'}`)}
   </main>`;
+}
+
+/* ---------- Ajouter une séance effectuée hors programme ---------- */
+function freeDraft(date) { return { type:null, date: date || today(), title:'', durMin:null, rpe:null, km:null, ex:[], sens:null, pains:{}, comment:'' }; }
+function wizFree() {
+  const f = ui.free, s = ui.wiz.step, ft = f.type && FREE_TYPES[f.type];
+  const steps = [];
+  steps.push({ body: `<h2 class="font-display text-3xl font-bold">Quelle séance as-tu faite ?</h2>
+      <div class="grid grid-cols-2 gap-2">${Object.entries(FREE_TYPES).map(([k, t]) => `<button data-a="pick" data-g="free:type" data-v="${k}" class="text-left rounded-2xl border p-4 min-h-[76px] ${f.type === k ? 'border-blue bg-blue/10' : 'border-ink-3 bg-ink-2'}"><div class="text-2xl">${t.icon}</div><div class="font-semibold text-sm mt-1">${t.name}</div></button>`).join('')}</div>
+      <label class="block"><span class="font-semibold">Date</span><input type="date" data-free="date" value="${f.date}" max="${today()}" class="inp w-full mt-2 !h-14"></label>
+      <label class="block"><span class="font-semibold">Titre <span class="text-txt-3 font-normal text-sm">(optionnel)</span></span><input data-free="title" value="${esc(f.title)}" class="inp w-full mt-2" placeholder="${ft ? 'ex. ' + ({ run:'Footing 8 km', gym:'Haut du corps', bike:'Sortie vélo', hand:'Match entre amis', other:'Natation' })[f.type] : 'ex. Footing 8 km'}"></label>`, ok: !!f.type && !!f.date });
+  steps.push({ body: `<h2 class="font-display text-3xl font-bold">${ft ? ft.icon + ' ' + ft.name : ''}</h2>
+      <div class="grid grid-cols-2 gap-3"><label><span class="font-semibold">Durée</span><div class="flex items-center gap-2 mt-2"><input type="number" inputmode="numeric" data-free="durMin" value="${f.durMin ?? ''}" class="inp w-full !text-2xl !h-14 text-center" placeholder="45"><span class="text-txt-3">min</span></div></label>
+      ${ft && ft.dist ? `<label><span class="font-semibold">Distance</span><div class="flex items-center gap-2 mt-2"><input type="number" inputmode="decimal" step="0.1" data-free="km" value="${f.km ?? ''}" class="inp w-full !text-2xl !h-14 text-center" placeholder="8"><span class="text-txt-3">km</span></div></label>` : '<div></div>'}</div>
+      ${ft && f.type === 'run' && f.km && f.durMin ? `<p class="text-sm text-txt-2 -mt-3">Allure moyenne : ${(() => { const p = f.durMin * 60 / f.km; return `${Math.floor(p/60)}′${pad(Math.round(p%60))}″/km`; })()}</p>` : ''}
+      ${Q('Effort global (RPE)', '1 = très facile · 5 = moyen · 8 = très dur · 10 = maximal', chips('free:rpe', f.rpe, rpeOpts(), 'grid grid-cols-5'))}
+      ${f.type === 'gym' ? `<div><div class="font-semibold">Exercices <span class="text-txt-3 font-normal text-sm">(optionnel : pour suivre tes charges)</span></div>
+        <div class="space-y-2 mt-2">${f.ex.map((x, i) => `<div class="rounded-xl bg-ink-2 p-3"><div class="flex justify-between items-center gap-2"><b class="text-sm">${EX[x.id].n}</b><button data-a="free-ex-del" data-v="${i}" class="text-txt-3 w-9 h-9" aria-label="Retirer">✕</button></div>
+          <div class="grid grid-cols-3 gap-2 mt-2">${[['sets','Séries'],['reps','Rép.'],['load','Charge (kg)']].map(([k, l]) => `<label class="text-xs"><span class="text-txt-3">${l}</span><input type="number" inputmode="decimal" step="any" data-freex="${k}" data-i="${i}" value="${x[k] ?? ''}" class="inp w-full text-center"></label>`).join('')}</div></div>`).join('')}</div>
+        <div class="flex gap-2 mt-2"><select id="free-ex-add" class="inp flex-1">${Object.entries(EX).filter(([, e]) => e.kind === 'strength' || e.kind === 'time').map(([id, e]) => `<option value="${id}">${e.fam} — ${e.n}</option>`).join('')}</select>${btn('+ Ajouter', 'free-ex-add', '', 'ghost')}</div></div>` : ''}`, ok: f.durMin > 0 && f.rpe != null });
+  steps.push({ body: `<h2 class="font-display text-3xl font-bold">Sensations</h2>${Q('Muscles', '', chips('free:sens', f.sens, [['fraiches','Fraîches','good'],['normales','Normales','good'],['lourdes','Lourdes','warn'],['courbatures','Courbatures','warn'],['tensions','Tensions localisées','bad']], 'grid grid-cols-2'))}
+      ${Object.entries(ZONES).map(([z, l]) => Q(`Douleur · ${l}`, '0 = aucune · 10 = maximale', painGrid('freep:' + z, f.pains[z]))).join('')}
+      <label class="block"><span class="font-semibold">Commentaire</span><textarea data-free="comment" rows="2" class="inp w-full mt-2" placeholder="Optionnel">${esc(f.comment)}</textarea></label>
+      ${f.durMin && f.rpe ? `<p class="text-sm text-txt-2">Charge de séance : ${f.durMin} × ${f.rpe} = <b class="text-txt-1">${f.durMin * f.rpe} UA</b>, ajoutée à ta charge de la semaine.</p>` : ''}`, ok: f.sens != null && Object.keys(ZONES).every(z => f.pains[z] != null) });
+  const last = s === steps.length - 1;
+  return wizardShell('Séance effectuée', s, steps.length, steps[s].body, steps[s].ok, last ? 'Enregistrer ✓' : 'Suivant →', last ? 'free-save' : null);
+}
+function saveFree() {
+  const f = ui.free, ex = {}; let ton = 0;
+  f.ex.forEach(x => { const n = Math.max(1, +x.sets || 1); ex[x.id] = { pres:null, sets: Array.from({length:n}, () => ({ reps:+x.reps || 0, load: x.load === '' || x.load == null ? null : +x.load, done:true })), rpe: f.rpe, tech:null, pain:null, comment:'', touched:true, free:true };
+    if (x.load) ton += n * (+x.reps || 0) * (+x.load); });
+  const t = D8(f.date).getTime() + 18*3600000;
+  const log = { id: uid(), slot:null, w: calWeek(f.date), key:'X', phase: weekInfo(calWeek(f.date)).phase, date: f.date, start: t, end: t + f.durMin * 60000, durMin: +f.durMin, status:'done',
+    rpe: f.rpe, sens: f.sens, pains: f.pains, comment: f.comment, tonnage: Math.round(ton), ex, extra:{ type: f.type, title: f.title.trim(), km: f.km ? +f.km : null }, _u: Date.now() };
+  DB().logs.push(log); persist('s_' + log.id); ui.free = null; ui.wiz = null;
+  return log;
 }

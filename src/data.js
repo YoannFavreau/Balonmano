@@ -23,6 +23,17 @@ const SESSIONS = {
   D:{ key:'D', name:'Fractionné long & athlétique', short:'Fract. long', icon:'🏃', calf:true }
 };
 
+const FREE_TYPES = {
+  run:   { name:'Course', icon:'🏃', calf:true, dist:true },
+  gym:   { name:'Salle / musculation', icon:'🏋️', calf:false, dist:false },
+  bike:  { name:'Vélo', icon:'🚴', calf:false, dist:true },
+  hand:  { name:'Handball (hors club)', icon:'🤾', calf:true, dist:false },
+  other: { name:'Autre activité', icon:'✦', calf:false, dist:false }
+};
+SESSIONS.X = { key:'X', name:'Séance libre', short:'Libre', icon:'➕', calf:false };
+const logTitle = l => l.key === 'X' && l.extra ? (l.extra.title || FREE_TYPES[l.extra.type].name) : SESSIONS[l.key].name;
+const logIcon = l => l.key === 'X' && l.extra ? FREE_TYPES[l.extra.type].icon : SESSIONS[l.key].icon;
+
 const ZONES = { calfL:'Mollet gauche', calfR:'Mollet droit', shoulder:'Épaule droite' };
 
 /* ---------- Échelles de fractionné (paliers) ---------- */
