@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121417">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Carnet HB">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Carnet de préparation — Retour au handball</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>/*TAILWIND*/</style>
+<style>
+  :root { color-scheme: dark; }
+  html, body { background:#121417; color:#eef0f2; -webkit-tap-highlight-color:transparent; }
+  .card { min-width:0; background:#1b1e23; border:1px solid #2f343b; border-radius:18px; }
+  .chip { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; font-weight:600; padding:.2rem .55rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+  .lbl { display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:#858c96; font-weight:600; margin-bottom:.35rem; }
+  .inp { background:#121417; border:1px solid #2f343b; border-radius:12px; padding:.6rem .75rem; min-height:44px; font-size:.9rem; color:#eef0f2; }
+  .inp:focus { outline:2px solid #3d8bfd; outline-offset:0; border-color:transparent; }
+  pre.schema { font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.35; background:#121417; border:1px dashed #2f343b; border-radius:12px; padding:.75rem; overflow-x:auto; color:#b9bfc7; white-space:pre; }
+  .tip { position:absolute; pointer-events:none; background:#23272d; border:1px solid #3a4048; border-radius:10px; padding:.45rem .6rem; font-size:.75rem; white-space:nowrap; z-index:5; box-shadow:0 8px 24px rgba(0,0,0,.45); }
+  .scroll-x { overflow-x:auto; scrollbar-width:none; } .scroll-x::-webkit-scrollbar { display:none; }
+  .safe-b { padding-bottom: max(env(safe-area-inset-bottom), 0px); } .safe-t { padding-top: env(safe-area-inset-top); }
+  .anim .fade-in { animation: fi .18s ease-out; } @keyframes fi { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
+  details > summary { list-style:none; cursor:pointer; } details > summary::-webkit-details-marker { display:none; }
+  input[type=range] { -webkit-appearance:none; appearance:none; height:44px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height:8px; border-radius:99px; background:linear-gradient(90deg,#34c77b,#f2b84b 50%,#ef5a5a); }
+  input[type=range][data-invert="1"]::-webkit-slider-runnable-track { background:linear-gradient(90deg,#ef5a5a,#f2b84b 50%,#34c77b); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:28px; height:28px; margin-top:-10px; border-radius:50%; background:#eef0f2; border:3px solid #121417; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  input[type=range]::-moz-range-track { height:8px; border-radius:99px; background:linear-gradient(90deg,#34c77b,#f2b84b 50%,#ef5a5a); }
+  input[type=range][data-invert="1"]::-moz-range-track { background:linear-gradient(90deg,#ef5a5a,#f2b84b 50%,#34c77b); }
+  input[type=range]::-moz-range-thumb { width:24px; height:24px; border-radius:50%; background:#eef0f2; border:3px solid #121417; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; } input[type=number] { -moz-appearance:textfield; }
+  :focus-visible { outline:2px solid #3d8bfd; outline-offset:2px; }
+  .drop-on { outline:2px dashed #3d8bfd; outline-offset:-2px; background:rgba(61,139,253,.08) !important; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  select.inp { appearance:none; background-image:linear-gradient(45deg,transparent 50%,#858c96 50%),linear-gradient(135deg,#858c96 50%,transparent 50%); background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%; background-size:5px 5px; background-repeat:no-repeat; padding-right:2rem; }
+</style>
+</head>
+<body class="font-sans antialiased">
+<div id="app"></div>
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-24 lg:bottom-6 z-[60] hidden px-4"></div>
+<script>/*JS*/</script>
+</body>
+</html>
